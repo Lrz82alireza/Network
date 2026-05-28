@@ -1,7 +1,7 @@
 /*
  * phase3.cc
  * Phase 3: Wi-Fi 6 (802.11ax) with UORA, BSRP, OFDMA.
- * Added STA positions (distance, coordinates) to output.
+ * Added STA positions, guard interval, and central RU configuration.
  */
 
 #include "ns3/core-module.h"
@@ -17,8 +17,8 @@
 #include "ns3/random-variable-stream.h"
 #include "ns3/he-configuration.h"
 #include "ns3/rr-multi-user-scheduler.h"
-#include <iomanip>      // for std::fixed, std::setprecision
-#include <cmath>        // for M_PI
+#include <iomanip>      
+#include <cmath>        
 
 using namespace ns3;
 
@@ -36,15 +36,17 @@ constexpr double START_TIME_MAX = 1.0;
 const char* IP_BASE = "192.168.1.0";
 const char* IP_MASK = "255.255.255.0";
 
-// Structure to hold STA position info
 struct StaPosition {
     double x;
     double y;
-    double distance;  // from AP (origin)
+    double distance;  
 };
 
 int main(int argc, char *argv[])
 {
+    // Apply 800ns Guard Interval globally for HE configurations
+    Config::SetDefault("ns3::HeConfiguration::GuardInterval", TimeValue(NanoSeconds(800)));
+
     double rxNoiseFigure = DEFAULT_NOISE_FIGURE;
     CommandLine cmd;
     cmd.AddValue("noise", "Rx noise figure in dB", rxNoiseFigure);
@@ -55,6 +57,7 @@ int main(int argc, char *argv[])
     staNodes.Create(NUM_STA);
     NodeContainer apNode;
     apNode.Create(1);
+    
     NodeContainer allNodes;
     allNodes.Add(staNodes);
     allNodes.Add(apNode);
@@ -71,7 +74,7 @@ int main(int argc, char *argv[])
     phyHelper.Set("RxNoiseFigure", DoubleValue(rxNoiseFigure));
     phyHelper.Set("ChannelSettings", StringValue("{0, 40, BAND_5GHZ, 0}"));
 
-    // ========== 3. 802.11ax features (minimal) ==========
+    // ========== 3. 802.11ax features ==========
     HeConfiguration heConfiguration;
     Ptr<HeConfiguration> heConfigObj = CreateObject<HeConfiguration>(heConfiguration);
 
@@ -85,27 +88,25 @@ int main(int argc, char *argv[])
     WifiMacHelper macHelper;
     NetDeviceContainer staDevices, apDevice;
 
-    // STAs
     macHelper.SetType("ns3::StaWifiMac");
     staDevices = wifiHelper.Install(phyHelper, macHelper, staNodes);
 
-    // AP with MultiUserScheduler (UORA, BSRP, UL OFDMA)
+    // Setup UORA and BSRP on AP's MultiUserScheduler
     macHelper.SetType("ns3::ApWifiMac");
     macHelper.SetMultiUserScheduler("ns3::RrMultiUserScheduler",
                                     "NStations", UintegerValue(NUM_STA),
                                     "EnableUlOfdma", BooleanValue(true),
-                                    "EnableBsrp", BooleanValue(true));
+                                    "EnableBsrp", BooleanValue(true),
+                                    "UseCentral26TonesRus", BooleanValue(true));
+                                    
     apDevice = wifiHelper.Install(phyHelper, macHelper, apNode);
 
-    // Apply HeConfiguration
     for (uint32_t i = 0; i < staDevices.GetN(); ++i) {
         Ptr<WifiNetDevice> staWifiNetDevice = DynamicCast<WifiNetDevice>(staDevices.Get(i));
-        if (staWifiNetDevice)
-            staWifiNetDevice->SetHeConfiguration(heConfigObj);
+        if (staWifiNetDevice) staWifiNetDevice->SetHeConfiguration(heConfigObj);
     }
     Ptr<WifiNetDevice> apWifiNetDevice = DynamicCast<WifiNetDevice>(apDevice.Get(0));
-    if (apWifiNetDevice)
-        apWifiNetDevice->SetHeConfiguration(heConfigObj);
+    if (apWifiNetDevice) apWifiNetDevice->SetHeConfiguration(heConfigObj);
 
     // ========== 5. Random positions for STAs ==========
     MobilityHelper mobility;
@@ -129,7 +130,6 @@ int main(int argc, char *argv[])
     mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
     mobility.Install(staNodes);
 
-    // AP at origin
     Ptr<ListPositionAllocator> apPosAlloc = CreateObject<ListPositionAllocator>();
     apPosAlloc->Add(Vector(0.0, 0.0, 0.0));
     mobility.SetPositionAllocator(apPosAlloc);
@@ -173,11 +173,10 @@ int main(int argc, char *argv[])
     FlowMonitorHelper flowHelper;
     Ptr<FlowMonitor> flowMonitor = flowHelper.Install(allNodes);
 
-    // ========== 10. Run simulation ==========
     Simulator::Stop(Seconds(SIMULATION_TIME));
     Simulator::Run();
 
-    // ========== 11. Collect and print results ==========
+    // ========== 10. Collect and print results ==========
     flowMonitor->CheckForLostPackets();
     Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>(flowHelper.GetClassifier());
     std::map<FlowId, FlowMonitor::FlowStats> stats = flowMonitor->GetFlowStats();
@@ -189,9 +188,6 @@ int main(int argc, char *argv[])
     std::cout << "\n===== Phase 3 Results (Wi-Fi 6 with UORA, BSRP, OFDMA) =====\n";
     std::cout << "Number of STAs: " << NUM_STA << "\n";
     std::cout << "Rx Noise Figure: " << rxNoiseFigure << " dB\n";
-    std::cout << "Packet interval: " << PACKET_INTERVAL * 1000 << " ms\n";
-    std::cout << "Random start max: " << START_TIME_MAX << " s\n";
-    std::cout << "UL OFDMA and BSRP enabled via MultiUserScheduler.\n";
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "\nSTA positions (distance from AP, coordinates):\n";
     for (uint32_t i = 0; i < NUM_STA; ++i) {
@@ -200,10 +196,8 @@ int main(int argc, char *argv[])
     }
     std::cout << "\nOnly flows from STAs to AP are considered:\n";
 
-    // Create a map from IP address to STA index for quick lookup
     std::map<Ipv4Address, uint32_t> ipToStaIdx;
     for (uint32_t i = 0; i < NUM_STA; ++i) {
-        // STA IPs start at 192.168.1.2 (since AP is .1)
         Ipv4Address staAddr = interfaces.GetAddress(i+1);
         ipToStaIdx[staAddr] = i;
     }
@@ -211,7 +205,7 @@ int main(int argc, char *argv[])
     for (auto &flow : stats) {
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(flow.first);
         if (t.destinationAddress == apAddr && t.sourceAddress != apAddr) {
-            double throughput = flow.second.rxBytes * 8.0 / SIMULATION_TIME; // bps
+            double throughput = flow.second.rxBytes * 8.0 / SIMULATION_TIME; 
             totalThroughput += throughput;
             sumSqThroughput += throughput * throughput;
             flowCount++;
@@ -219,20 +213,18 @@ int main(int argc, char *argv[])
             double avgDelay = flow.second.delaySum.GetSeconds() / flow.second.rxPackets;
             double lossRate = (flow.second.txPackets - flow.second.rxPackets) * 100.0 / flow.second.txPackets;
 
-            // Find STA index by source IP
             uint32_t staIdx = 0;
             auto it = ipToStaIdx.find(t.sourceAddress);
             if (it != ipToStaIdx.end()) {
                 staIdx = it->second;
             } else {
-                // fallback: extract last octet
                 std::stringstream ss;
                 t.sourceAddress.Print(ss);
                 std::string ipStr = ss.str();
                 size_t lastDot = ipStr.find_last_of('.');
                 if (lastDot != std::string::npos) {
                     int lastOctet = std::stoi(ipStr.substr(lastDot+1));
-                    staIdx = lastOctet - 2; // because .2 is STA0
+                    staIdx = lastOctet - 2; 
                     if (staIdx >= NUM_STA) staIdx = 0;
                 }
             }

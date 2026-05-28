@@ -4,8 +4,8 @@
  * Measures throughput, delay, packet loss, and Jain's fairness index.
  *
  * Usage:
- *   ./ns3 run phase1                # default noise figure = 1.0 dB
- *   ./ns3 run "phase1 --noise=7.0"  # increase noise to 7.0 dB
+ * ./ns3 run phase1                # default noise figure = 1.0 dB
+ * ./ns3 run "phase1 --noise=7.0"  # increase noise to 7.0 dB
  */
 
 #include "ns3/core-module.h"
@@ -27,15 +27,12 @@ constexpr uint16_t UDP_PORT = 9;              // port for UDP echo
 constexpr double DEFAULT_NOISE_FIGURE = 1.0;  // dB (default for YansWifiPhy)
 
 // Packet sizes (bytes) for each STA: index 0..4 according to project statement
-// STA0=1024, STA1=512, STA2=1024, STA3=512, STA4=1024
 constexpr uint32_t PACKET_SIZES[NUM_STA] = {1024, 512, 1024, 512, 1024};
 
-// IP base for addressing
 const char* IP_BASE = "192.168.1.0";
 const char* IP_MASK = "255.255.255.0";
 
 int main(int argc, char *argv[]) {
-    // ---------- Parse command line arguments for noise figure ----------
     double rxNoiseFigure = DEFAULT_NOISE_FIGURE;
     CommandLine cmd;
     cmd.AddValue("noise", "Rx noise figure in dB", rxNoiseFigure);
@@ -43,50 +40,38 @@ int main(int argc, char *argv[]) {
 
     // ========== 1. Create nodes ==========
     NodeContainer staNodes;
-    staNodes.Create(NUM_STA);               // 5 stations
-
+    staNodes.Create(NUM_STA);
     NodeContainer apNode;
-    apNode.Create(1);                       // 1 access point
+    apNode.Create(1);
 
-    // Combine for later convenience (e.g., internet stack)
     NodeContainer allNodes;
     allNodes.Add(staNodes);
     allNodes.Add(apNode);
 
     // ========== 2. Configure physical and MAC layers for Wi-Fi 5 ==========
-    // 2.1 Create channel helper (default propagation loss + delay)
     YansWifiChannelHelper channelHelper = YansWifiChannelHelper::Default();
-
-    // 2.2 Create PHY helper and attach channel
     YansWifiPhyHelper phyHelper;
-    // Set noise figure (can be changed via command line)
     phyHelper.Set("RxNoiseFigure", DoubleValue(rxNoiseFigure));
     phyHelper.SetChannel(channelHelper.Create());
 
-    // 2.3 Create Wi-Fi helper and set standard to 802.11ac
     WifiHelper wifiHelper;
     wifiHelper.SetStandard(WIFI_STANDARD_80211ac);
-
-    // 2.4 Set rate control algorithm (constant rate for baseline)
     wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager",
                                         "DataMode", StringValue("VhtMcs0"),
                                         "ControlMode", StringValue("VhtMcs0"));
-    // wifiHelper.SetRemoteStationManager("ns3::IdealWifiManager");
 
-    // 2.5 Create MAC helper and install on STAs and AP
     WifiMacHelper macHelper;
     NetDeviceContainer staDevices, apDevice;
 
-    macHelper.SetType("ns3::StaWifiMac");           // STA role
+    macHelper.SetType("ns3::StaWifiMac");
     staDevices = wifiHelper.Install(phyHelper, macHelper, staNodes);
 
-    macHelper.SetType("ns3::ApWifiMac");            // AP role
+    macHelper.SetType("ns3::ApWifiMac");
     apDevice = wifiHelper.Install(phyHelper, macHelper, apNode);
 
     // ========== 3. Set mobility (constant positions) ==========
     MobilityHelper mobility;
-    double radius = AP_STA_DISTANCE;  // meters (distance from AP to each STA)
-    // Angles for 5 equally spaced STAs (0, 72, 144, 216, 288 degrees)
+    double radius = AP_STA_DISTANCE;
     double angles[] = {0, 72, 144, 216, 288};
 
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
@@ -100,7 +85,6 @@ int main(int argc, char *argv[]) {
     mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
     mobility.Install(staNodes);
 
-    // AP at origin
     Ptr<ListPositionAllocator> apPosAlloc = CreateObject<ListPositionAllocator>();
     apPosAlloc->Add(Vector(0.0, 0.0, 0.0));
     mobility.SetPositionAllocator(apPosAlloc);
@@ -114,12 +98,10 @@ int main(int argc, char *argv[]) {
     ipv4.SetBase(IP_BASE, IP_MASK);
 
     NetDeviceContainer allNetDevices;
-    allNetDevices.Add(apDevice);      // first device: AP (index 0)
-    allNetDevices.Add(staDevices);    // then STAs (indices 1 to 5)
+    allNetDevices.Add(apDevice);
+    allNetDevices.Add(staDevices);
 
     Ipv4InterfaceContainer interfaces = ipv4.Assign(allNetDevices);
-
-    // AP is at index 0
     Ipv4Address apAddr = interfaces.GetAddress(0);
 
     // ========== 5. Install UDP Echo server on AP ==========
@@ -130,9 +112,8 @@ int main(int argc, char *argv[]) {
     serverApp.Stop(Seconds(SIMULATION_TIME));
 
     // ========== 6. Install UDP Echo clients on each STA ==========
-    // Packet sizes: as defined in PACKET_SIZES array
     UdpEchoClientHelper clientHelper(apAddr, port);
-    clientHelper.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF)); // unlimited
+    clientHelper.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
     clientHelper.SetAttribute("Interval", TimeValue(Seconds(PACKET_INTERVAL)));
 
     for (uint32_t i = 0; i < staNodes.GetN(); ++i) {
@@ -157,7 +138,7 @@ int main(int argc, char *argv[]) {
 
     double totalThroughput = 0.0;
     double sumSqThroughput = 0.0;
-    std::vector<double> throughputs;
+    double totalDelaySum = 0.0;
     int flowCount = 0;
 
     std::cout << "\n===== Phase 1 Results (Wi-Fi 5 baseline) =====\n";
@@ -167,16 +148,14 @@ int main(int argc, char *argv[]) {
     for (auto &flow : stats) {
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(flow.first);
 
-        // Check if this flow is from a STA to AP
-        // STA IPs: 192.168.1.2 to 192.168.1.6 , AP IP: 192.168.1.1
         if (t.destinationAddress == apAddr && t.sourceAddress != apAddr) {
-            double throughput = flow.second.rxBytes * 8.0 / SIMULATION_TIME; // bits per second
-            throughputs.push_back(throughput);
+            double throughput = flow.second.rxBytes * 8.0 / SIMULATION_TIME;
             totalThroughput += throughput;
             sumSqThroughput += throughput * throughput;
             flowCount++;
 
             double avgDelay = flow.second.delaySum.GetSeconds() / flow.second.rxPackets;
+            totalDelaySum += avgDelay;
             double lossRate = (flow.second.txPackets - flow.second.rxPackets) * 100.0 / flow.second.txPackets;
 
             std::cout << "Flow " << flow.first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
@@ -188,12 +167,17 @@ int main(int argc, char *argv[]) {
 
     if (flowCount > 0) {
         double fairness = (totalThroughput * totalThroughput) / (flowCount * sumSqThroughput);
-        std::cout << "\nJain's Fairness Index: " << fairness << std::endl;
+        double overallAvgThroughput = totalThroughput / flowCount;
+        double overallAvgDelay = totalDelaySum / flowCount;
+
+        std::cout << "\n--- Overall Metrics ---\n";
+        std::cout << "Average Throughput per STA: " << overallAvgThroughput / 1e6 << " Mbps\n";
+        std::cout << "Average Delay per STA: " << overallAvgDelay * 1000 << " ms\n";
+        std::cout << "Jain's Fairness Index: " << fairness << std::endl;
     } else {
         std::cout << "No STA->AP flows found!\n";
     }
 
     Simulator::Destroy();
-
     return 0;
 }

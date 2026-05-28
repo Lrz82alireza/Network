@@ -1,0 +1,277 @@
+alireza@alireza-VMware-Virtual-Platform:~/APP/ns-allinone-3.41/ns-3.41$ ./ns3 run phase1
+
+===== Phase 1 Results (Wi-Fi 5 baseline) =====
+Rx Noise Figure = 1 dB
+Only flows from STAs to AP are considered:
+Flow 1 (192.168.1.2 -> 192.168.1.1)
+  Throughput: 0.0159904 Mbps
+  Average delay: 2.945 ms
+  Packet loss: 5%
+Flow 2 (192.168.1.3 -> 192.168.1.1)
+  Throughput: 0.008208 Mbps
+  Average delay: 2.10252 ms
+  Packet loss: 5%
+Flow 3 (192.168.1.4 -> 192.168.1.1)
+  Throughput: 0.0159904 Mbps
+  Average delay: 3.06938 ms
+  Packet loss: 5%
+Flow 4 (192.168.1.5 -> 192.168.1.1)
+  Throughput: 0.008208 Mbps
+  Average delay: 2.40371 ms
+  Packet loss: 5%
+Flow 5 (192.168.1.6 -> 192.168.1.1)
+  Throughput: 0.0159904 Mbps
+  Average delay: 2.36197 ms
+  Packet loss: 5%
+
+--- Overall Metrics ---
+Average Throughput per STA: 0.0128774 Mbps
+Average Delay per STA: 2.57652 ms
+Jain's Fairness Index: 0.919409
+
+
+-------------------------------------------------------------------
+alireza@alireza-VMware-Virtual-Platform:~/APP/ns-allinone-3.41/ns-3.41$ ./ns3 run phase2
+
+===== Phase 2 Results (Wi-Fi 6 with OFDMA) =====
+Rx Noise Figure = 1 dB
+Only flows from STAs to AP are considered:
+Flow 1 (192.168.1.2 -> 192.168.1.1)
+  Throughput: 0.0151488 Mbps
+  Average delay: 1.86398 ms
+  Packet loss: 10%
+Flow 2 (192.168.1.3 -> 192.168.1.1)
+  Throughput: 0.007776 Mbps
+  Average delay: 1.09851 ms
+  Packet loss: 10%
+Flow 3 (192.168.1.4 -> 192.168.1.1)
+  Throughput: 0.0143072 Mbps
+  Average delay: 1.38003 ms
+  Packet loss: 15%
+Flow 4 (192.168.1.5 -> 192.168.1.1)
+  Throughput: 0.007776 Mbps
+  Average delay: 1.524 ms
+  Packet loss: 10%
+Flow 5 (192.168.1.6 -> 192.168.1.1)
+  Throughput: 0.0143072 Mbps
+  Average delay: 1.15378 ms
+  Packet loss: 15%
+
+--- Overall Metrics ---
+Average Throughput per STA: 0.011863 Mbps
+Average Delay per STA: 1.40406 ms
+Jain's Fairness Index: 0.926098
+
+-------------------------------------------------------------------
+alireza@alireza-VMware-Virtual-Platform:~/APP/ns-allinone-3.41/ns-3.41$ ./ns3 run phase3
+
+===== Phase 3 Results (Wi-Fi 6 with UORA, BSRP, OFDMA) =====
+Number of STAs: 40
+Rx Noise Figure: 1 dB
+
+STA positions (distance from AP, coordinates):
+  STA 1: distance = 5.70 m, (-0.64, -5.66)
+  STA 2: distance = 44.62 m, (-38.85, -21.95)
+  STA 3: distance = 30.00 m, (-9.30, 28.52)
+  STA 4: distance = 6.79 m, (6.08, -3.02)
+  STA 5: distance = 10.93 m, (8.90, -6.35)
+  STA 6: distance = 35.00 m, (-29.27, -19.19)
+  STA 7: distance = 28.60 m, (-28.37, -3.65)
+  STA 8: distance = 24.82 m, (24.13, 5.82)
+  STA 9: distance = 41.33 m, (-21.33, -35.40)
+  STA 10: distance = 28.86 m, (28.86, 0.36)
+  STA 11: distance = 37.98 m, (8.98, 36.90)
+  STA 12: distance = 7.07 m, (3.81, -5.95)
+  STA 13: distance = 30.14 m, (14.41, -26.47)
+  STA 14: distance = 42.08 m, (32.12, 27.18)
+  STA 15: distance = 47.98 m, (27.81, -39.10)
+  STA 16: distance = 25.33 m, (5.53, -24.72)
+  STA 17: distance = 28.57 m, (26.14, 11.52)
+  STA 18: distance = 44.42 m, (39.12, -21.05)
+  STA 19: distance = 36.67 m, (36.55, 2.98)
+  STA 20: distance = 5.49 m, (-2.02, -5.10)
+  STA 21: distance = 27.47 m, (22.25, -16.11)
+  STA 22: distance = 37.34 m, (-25.25, 27.51)
+  STA 23: distance = 22.88 m, (16.64, 15.70)
+  STA 24: distance = 26.58 m, (10.82, -24.27)
+  STA 25: distance = 34.78 m, (-14.61, -31.56)
+  STA 26: distance = 44.44 m, (-28.98, 33.69)
+  STA 27: distance = 9.25 m, (-8.13, 4.42)
+  STA 28: distance = 31.45 m, (26.89, -16.31)
+  STA 29: distance = 19.74 m, (-13.11, -14.75)
+  STA 30: distance = 11.14 m, (-10.84, 2.55)
+  STA 31: distance = 40.65 m, (23.30, -33.31)
+  STA 32: distance = 49.32 m, (35.93, 33.79)
+  STA 33: distance = 45.12 m, (-40.05, 20.78)
+  STA 34: distance = 41.81 m, (25.53, 33.11)
+  STA 35: distance = 23.14 m, (-21.55, -8.45)
+  STA 36: distance = 25.56 m, (25.07, 4.97)
+  STA 37: distance = 24.79 m, (-10.93, 22.26)
+  STA 38: distance = 43.06 m, (-37.02, 21.99)
+  STA 39: distance = 32.36 m, (-31.51, 7.33)
+  STA 40: distance = 23.96 m, (23.50, 4.63)
+
+Only flows from STAs to AP are considered:
+Flow 1 (STA 38, dist=43.06 m) 192.168.1.39 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+Flow 2 (STA 37, dist=24.79 m) 192.168.1.38 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 37.74 ms
+  Packet loss: 10.01%
+Flow 3 (STA 16, dist=25.33 m) 192.168.1.17 -> 192.168.1.1
+  Throughput: 0.19 Mbps
+  Average delay: 16.60 ms
+  Packet loss: 3.42%
+Flow 4 (STA 12, dist=7.07 m) 192.168.1.13 -> 192.168.1.1
+  Throughput: 0.19 Mbps
+  Average delay: 0.74 ms
+  Packet loss: 0.20%
+Flow 5 (STA 40, dist=23.96 m) 192.168.1.41 -> 192.168.1.1
+  Throughput: 0.18 Mbps
+  Average delay: 16.18 ms
+  Packet loss: 3.91%
+Flow 6 (STA 20, dist=5.49 m) 192.168.1.21 -> 192.168.1.1
+  Throughput: 0.19 Mbps
+  Average delay: 0.54 ms
+  Packet loss: 0.00%
+Flow 7 (STA 15, dist=47.98 m) 192.168.1.16 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+Flow 8 (STA 6, dist=35.00 m) 192.168.1.7 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 133.33 ms
+  Packet loss: 8.12%
+Flow 9 (STA 19, dist=36.67 m) 192.168.1.20 -> 192.168.1.1
+  Throughput: 0.15 Mbps
+  Average delay: 95.66 ms
+  Packet loss: 17.54%
+Flow 10 (STA 1, dist=5.70 m) 192.168.1.2 -> 192.168.1.1
+  Throughput: 0.19 Mbps
+  Average delay: 0.55 ms
+  Packet loss: 0.00%
+Flow 11 (STA 9, dist=41.33 m) 192.168.1.10 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+Flow 12 (STA 32, dist=49.32 m) 192.168.1.33 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+Flow 13 (STA 36, dist=25.56 m) 192.168.1.37 -> 192.168.1.1
+  Throughput: 0.18 Mbps
+  Average delay: 20.04 ms
+  Packet loss: 3.03%
+Flow 14 (STA 27, dist=9.25 m) 192.168.1.28 -> 192.168.1.1
+  Throughput: 0.18 Mbps
+  Average delay: 1.46 ms
+  Packet loss: 0.21%
+Flow 15 (STA 28, dist=31.45 m) 192.168.1.29 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 29.75 ms
+  Packet loss: 6.07%
+Flow 16 (STA 31, dist=40.65 m) 192.168.1.32 -> 192.168.1.1
+  Throughput: 0.15 Mbps
+  Average delay: 171.80 ms
+  Packet loss: 17.18%
+Flow 17 (STA 10, dist=28.86 m) 192.168.1.11 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 27.95 ms
+  Packet loss: 6.18%
+Flow 18 (STA 23, dist=22.88 m) 192.168.1.24 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 19.74 ms
+  Packet loss: 5.05%
+Flow 19 (STA 18, dist=44.42 m) 192.168.1.19 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+Flow 20 (STA 7, dist=28.60 m) 192.168.1.8 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 100.18 ms
+  Packet loss: 8.65%
+Flow 21 (STA 13, dist=30.14 m) 192.168.1.14 -> 192.168.1.1
+  Throughput: 0.16 Mbps
+  Average delay: 18.06 ms
+  Packet loss: 10.31%
+Flow 22 (STA 21, dist=27.47 m) 192.168.1.22 -> 192.168.1.1
+  Throughput: 0.18 Mbps
+  Average delay: 22.14 ms
+  Packet loss: 3.54%
+Flow 23 (STA 2, dist=44.62 m) 192.168.1.3 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+Flow 24 (STA 4, dist=6.79 m) 192.168.1.5 -> 192.168.1.1
+  Throughput: 0.18 Mbps
+  Average delay: 0.76 ms
+  Packet loss: 0.00%
+Flow 25 (STA 25, dist=34.78 m) 192.168.1.26 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 90.14 ms
+  Packet loss: 3.58%
+Flow 26 (STA 30, dist=11.14 m) 192.168.1.31 -> 192.168.1.1
+  Throughput: 0.18 Mbps
+  Average delay: 1.95 ms
+  Packet loss: 0.37%
+Flow 27 (STA 29, dist=19.74 m) 192.168.1.30 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 21.71 ms
+  Packet loss: 6.10%
+Flow 28 (STA 35, dist=23.14 m) 192.168.1.36 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 35.28 ms
+  Packet loss: 5.71%
+Flow 29 (STA 22, dist=37.34 m) 192.168.1.23 -> 192.168.1.1
+  Throughput: 0.16 Mbps
+  Average delay: 303.44 ms
+  Packet loss: 9.48%
+Flow 30 (STA 5, dist=10.93 m) 192.168.1.6 -> 192.168.1.1
+  Throughput: 0.18 Mbps
+  Average delay: 1.53 ms
+  Packet loss: 0.27%
+Flow 31 (STA 26, dist=44.44 m) 192.168.1.27 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+Flow 32 (STA 8, dist=24.82 m) 192.168.1.9 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 15.59 ms
+  Packet loss: 2.71%
+Flow 33 (STA 34, dist=41.81 m) 192.168.1.35 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+Flow 34 (STA 33, dist=45.12 m) 192.168.1.34 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+Flow 35 (STA 3, dist=30.00 m) 192.168.1.4 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 68.98 ms
+  Packet loss: 6.87%
+Flow 36 (STA 11, dist=37.98 m) 192.168.1.12 -> 192.168.1.1
+  Throughput: 0.16 Mbps
+  Average delay: 252.00 ms
+  Packet loss: 8.14%
+Flow 37 (STA 17, dist=28.57 m) 192.168.1.18 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 41.03 ms
+  Packet loss: 4.05%
+Flow 38 (STA 24, dist=26.58 m) 192.168.1.25 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 22.32 ms
+  Packet loss: 2.86%
+Flow 39 (STA 39, dist=32.36 m) 192.168.1.40 -> 192.168.1.1
+  Throughput: 0.17 Mbps
+  Average delay: 122.06 ms
+  Packet loss: 4.03%
+Flow 40 (STA 14, dist=42.08 m) 192.168.1.15 -> 192.168.1.1
+  Throughput: 0.00 Mbps
+  Average delay: -nan ms
+  Packet loss: 100.00%
+
+Total Throughput: 5.22 Mbps
+Jain's Fairness Index: 0.75
