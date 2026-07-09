@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <chrono>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -73,6 +74,9 @@ void send_file(const std::string& ip, int port, const std::string& filename) {
 
     log_msg("Starting Sliding Window transmission. Total packets: " + std::to_string(total_packets));
 
+    // Start timing
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     while (base < total_packets) {
         // Send packets within the window
         while (next_seq < base + WINDOW_SIZE && next_seq < total_packets) {
@@ -124,6 +128,10 @@ void send_file(const std::string& ip, int port, const std::string& filename) {
         }
     }
 
+    // Stop timing
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end_time - start_time;
+
     // Send FIN packet
     Packet fin_pkt;
     std::memset(&fin_pkt, 0, sizeof(Packet));
@@ -134,8 +142,10 @@ void send_file(const std::string& ip, int port, const std::string& filename) {
     
     sendto(sockfd, fin_buffer.data(), fin_buffer.size(), 0,
            (const struct sockaddr*)&receiver_addr, sizeof(receiver_addr));
+           
     log_msg("Sent FIN packet. Transfer complete.");
     log_msg("Total Retransmission events: " + std::to_string(total_retransmissions));
+    log_msg("Total transfer time: " + std::to_string(elapsed.count()) + " seconds");
 
     close(sockfd);
 }
