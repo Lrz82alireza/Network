@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "packet.hpp"
+#include "logger.hpp"
 
 int setup_server_socket(int port) {
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -37,6 +38,8 @@ void send_ack(int sockfd, const struct sockaddr_in& client_addr, socklen_t clien
     std::vector<char> buffer = serialize(ack_pkt);
     sendto(sockfd, buffer.data(), buffer.size(), 0, 
            (const struct sockaddr*)&client_addr, client_len);
+           
+    log_msg("Sent cumulative ACK for next expected seq: " + std::to_string(ack_num));
 }
 
 void receive_file(int port, const std::string& filename) {
@@ -53,7 +56,7 @@ void receive_file(int port, const std::string& filename) {
     bool receiving = true;
     char buffer[sizeof(Packet)];
 
-    std::cout << "Listening on port " << port << "..." << std::endl;
+    log_msg("Listening on port " + std::to_string(port) + "...");
 
     while (receiving) {
         struct sockaddr_in client_addr;
@@ -65,35 +68,33 @@ void receive_file(int port, const std::string& filename) {
         if (n > 0) {
             Packet pkt = deserialize(buffer, n);
             
-            // Checksum verification
             uint16_t received_checksum = pkt.header.checksum;
             pkt.header.checksum = 0;
             uint16_t calculated_checksum = calculate_checksum(&pkt);
             
             if (calculated_checksum != received_checksum) {
-                std::cout << "Corrupted packet dropped." << std::endl;
+                log_msg("Corrupted packet dropped.");
                 continue; 
             }
 
-            // Handle FIN packet
             if (pkt.header.flags & FLAG_FIN) {
-                std::cout << "FIN packet received. Transfer complete." << std::endl;
+                log_msg("FIN packet received. Transfer complete.");
                 receiving = false;
                 continue;
             }
 
-            // Handle DATA packet
             if (pkt.header.flags & FLAG_DATA) {
+                log_msg("Received DATA packet, seq: " + std::to_string(pkt.header.seq_num));
+                
                 if (pkt.header.seq_num == expected_seq) {
-                    // In-order packet, write to file
+                    // In-order packet
                     file.write(pkt.payload, pkt.header.length);
-                    send_ack(sockfd, client_addr, client_len, pkt.header.seq_num);
                     expected_seq++;
-                } else if (pkt.header.seq_num < expected_seq) {
-                    // Duplicate packet (ACK was likely lost), resend ACK
-                    send_ack(sockfd, client_addr, client_len, pkt.header.seq_num);
+                    send_ack(sockfd, client_addr, client_len, expected_seq);
+                } else {
+                    // Out-of-order or duplicate packet, send ACK for the expected seq
+                    send_ack(sockfd, client_addr, client_len, expected_seq);
                 }
-                // Out-of-order packets (seq > expected) are dropped in Stop-and-Wait
             }
         }
     }

@@ -6,40 +6,40 @@ CXXFLAGS = -Wall -Wextra -std=c++11 -O2
 SENDER = sender
 RECEIVER = receiver
 
-# Test files and parameters
+# Paths and Parameters
 PORT = 8080
 IP = 127.0.0.1
-INPUT_FILE = sample_input.txt
-OUTPUT_FILE = sample_output.txt
+SENDER_DIR = Junk/Sender
+RECEIVER_DIR = Junk/Receiver
+INPUT_FILE = $(SENDER_DIR)/sample_input.txt
+OUTPUT_FILE = $(RECEIVER_DIR)/sample_output.txt
 
-# Default target to compile both programs
 all: $(SENDER) $(RECEIVER)
 
-$(SENDER): sender.cpp packet.hpp
+$(SENDER): sender.cpp packet.hpp logger.hpp
 	$(CXX) $(CXXFLAGS) sender.cpp -o $(SENDER)
 
-$(RECEIVER): receiver.cpp packet.hpp
+$(RECEIVER): receiver.cpp packet.hpp logger.hpp
 	$(CXX) $(CXXFLAGS) receiver.cpp -o $(RECEIVER)
 
-# Automation target using tmux
 run: all
-	@# Create a dummy input file if it doesn't exist for testing
-	@test -f $(INPUT_FILE) || echo "This is a comprehensive test file for Mini-TCP implementation over UDP." > $(INPUT_FILE)
+	@# Create required directories
+	mkdir -p $(SENDER_DIR) $(RECEIVER_DIR)
 	
-	@# Start a new tmux session in the background, named 'minitcp', and run the receiver on the left
+	@# Generate a large test file (approx 200-300KB) to ensure multiple packets
+	@echo "Generating large test file in $(INPUT_FILE)..."
+	@rm -f $(INPUT_FILE)
+	@for i in `seq 1 100`; do \
+		echo "Line $$i: This is a robust test file for Mini-TCP to guarantee multiple packets." >> $(INPUT_FILE); \
+	done
+	
+	@# Start tmux session for split-screen testing
 	tmux new-session -d -s minitcp "./$(RECEIVER) $(PORT) $(OUTPUT_FILE); echo '--- Receiver finished ---'; exec bash"
-	
-	@# Wait a split second to ensure receiver socket is bound before sender starts
 	sleep 0.5
-	
-	@# Split the window horizontally (creating a right pane) and run the sender
 	tmux split-window -h -t minitcp "./$(SENDER) $(IP) $(PORT) $(INPUT_FILE); echo '--- Sender finished ---'; exec bash"
-	
-	@# Attach to the tmux session to bring it to the foreground
 	tmux attach-session -t minitcp
 
-# Clean target to remove binaries and output test files
 clean:
-	rm -f $(SENDER) $(RECEIVER) $(OUTPUT_FILE)
-	@# Optionally kill the tmux session if it hangs
+	rm -f $(SENDER) $(RECEIVER)
+	rm -rf Junk/
 	-tmux kill-session -t minitcp 2>/dev/null || true
