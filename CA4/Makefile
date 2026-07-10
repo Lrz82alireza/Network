@@ -46,6 +46,47 @@ run: all
 	tmux split-window -h -t minitcp "./$(SENDER) $(IP) $(PORT) $(INPUT_FILE) $(LOG_DIR); echo '--- Sender finished ---'; exec bash"
 	tmux attach-session -t minitcp
 
+test: all directories
+	@echo "========================================"
+	@echo "Running Automated Tests for Phase 5"
+	@echo "========================================"
+	@echo "Cleaning up zombie processes..."
+	@-killall -9 receiver sender 2>/dev/null || true
+	@mkdir -p Junk/Plots
+	@# Generate a test file if it doesn't exist
+	@rm -f $(INPUT_FILE)
+	@for i in `seq 1 1000`; do echo "Line $$i: Automated test data for plotting phase." >> $(INPUT_FILE); done
+
+	@echo "\n>>> RUNNING TEST 1: Loss = 0%, Delay = 0ms <<<"
+	./$(RECEIVER) $(PORT) $(OUTPUT_FILE) --loss 0.0 --delay 0 > /dev/null 2>&1 & PID=$$!; \
+	sleep 0.5; \
+	./$(SENDER) $(IP) $(PORT) $(INPUT_FILE) > /dev/null; \
+	wait $$PID; \
+	mv $(LOG_DIR)/cwnd.csv $(LOG_DIR)/cwnd_test1.csv; \
+	mv $(LOG_DIR)/events.log $(LOG_DIR)/events_test1.log
+
+	@echo "\n>>> RUNNING TEST 2: Loss = 10%, Delay = 50ms <<<"
+	./$(RECEIVER) $(PORT) $(OUTPUT_FILE) --loss 0.1 --delay 50 > /dev/null 2>&1 & PID=$$!; \
+	sleep 0.5; \
+	./$(SENDER) $(IP) $(PORT) $(INPUT_FILE) > /dev/null; \
+	wait $$PID; \
+	mv $(LOG_DIR)/cwnd.csv $(LOG_DIR)/cwnd_test2.csv; \
+	mv $(LOG_DIR)/events.log $(LOG_DIR)/events_test2.log
+
+	@echo "\n>>> RUNNING TEST 3: Loss = 20%, Delay = 100ms <<<"
+	./$(RECEIVER) $(PORT) $(OUTPUT_FILE) --loss 0.2 --delay 100 > /dev/null 2>&1 & PID=$$!; \
+	sleep 0.5; \
+	./$(SENDER) $(IP) $(PORT) $(INPUT_FILE) > /dev/null; \
+	wait $$PID; \
+	mv $(LOG_DIR)/cwnd.csv $(LOG_DIR)/cwnd_test3.csv; \
+	mv $(LOG_DIR)/events.log $(LOG_DIR)/events_test3.log
+
+	@echo "\n========================================"
+	@echo "Tests Completed. Generating Python Plots..."
+	@echo "========================================"
+	@python3 plot_results.py
+
 clean:
 	rm -rf $(JUNK_DIR)
 	-tmux kill-session -t minitcp 2>/dev/null || true
+
