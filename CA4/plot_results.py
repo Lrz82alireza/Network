@@ -4,11 +4,12 @@ import matplotlib.pyplot as plt
 import re
 from datetime import datetime
 
-# Define the 3 test scenarios based on the project requirements
+# Define the 4 test scenarios including the Bonus Phase
 tests = [
     {"id": 1, "name": "Test 1 (0% Loss, 0ms Delay)", "cwnd": "Junk/Logs/cwnd_test1.csv", "log": "Junk/Logs/events_test1.log", "color": "blue"},
     {"id": 2, "name": "Test 2 (10% Loss, 50ms Delay)", "cwnd": "Junk/Logs/cwnd_test2.csv", "log": "Junk/Logs/events_test2.log", "color": "orange"},
-    {"id": 3, "name": "Test 3 (20% Loss, 100ms Delay)", "cwnd": "Junk/Logs/cwnd_test3.csv", "log": "Junk/Logs/events_test3.log", "color": "red"}
+    {"id": 3, "name": "Test 3 (20% Loss, 100ms Delay)", "cwnd": "Junk/Logs/cwnd_test3.csv", "log": "Junk/Logs/events_test3.log", "color": "red"},
+    {"id": 4, "name": "Test 4 (BONUS: 10% Loss, Fast Recovery)", "cwnd": "Junk/Logs/cwnd_test4.csv", "log": "Junk/Logs/events_test4.log", "color": "green"}
 ]
 
 # Create output directory for plots
@@ -16,12 +17,12 @@ plot_dir = "Junk/Plots"
 os.makedirs(plot_dir, exist_ok=True)
 
 # =========================================================
-# 1. Plot CWND over Time (4 Subplots)
+# 1. Plot CWND over Time (5 Subplots: 4 Individual + 1 Combined)
 # =========================================================
-fig, axes = plt.subplots(4, 1, figsize=(12, 16))
+fig, axes = plt.subplots(5, 1, figsize=(12, 20))
 fig.suptitle("Congestion Window (cwnd) over Time", fontsize=16)
 
-# Plot individual tests on the first 3 subplots
+# Plot individual tests on the first 4 subplots
 for idx, test in enumerate(tests):
     if os.path.exists(test["cwnd"]):
         df = pd.read_csv(test["cwnd"])
@@ -32,17 +33,17 @@ for idx, test in enumerate(tests):
         axes[idx].grid(True, linestyle='--', alpha=0.7)
         axes[idx].legend()
 
-# Plot the combined overlay on the 4th subplot
-axes[3].set_title("Combined Comparison (All Tests)")
+# Plot the combined overlay on the 5th subplot
+axes[4].set_title("Combined Comparison (All Tests)")
 for test in tests:
     if os.path.exists(test["cwnd"]):
         df = pd.read_csv(test["cwnd"])
-        axes[3].plot(df['Time(s)'], df['Cwnd'], label=test["name"], color=test["color"], linewidth=2, alpha=0.8)
+        axes[4].plot(df['Time(s)'], df['Cwnd'], label=test["name"], color=test["color"], linewidth=2, alpha=0.8)
 
-axes[3].set_xlabel("Time (seconds)")
-axes[3].set_ylabel("CWND (Packets)")
-axes[3].grid(True, linestyle='--', alpha=0.7)
-axes[3].legend()
+axes[4].set_xlabel("Time (seconds)")
+axes[4].set_ylabel("CWND (Packets)")
+axes[4].grid(True, linestyle='--', alpha=0.7)
+axes[4].legend()
 
 plt.tight_layout(rect=[0, 0, 1, 0.97])
 plt.savefig(f"{plot_dir}/cwnd_comparison.png")
@@ -50,12 +51,12 @@ print(f"Saved CWND plot (with combined view) to {plot_dir}/cwnd_comparison.png")
 
 
 # =========================================================
-# 2. Parse Events Log for Throughput and Plot (4 Subplots)
+# 2. Parse Events Log for Throughput and Plot (5 Subplots)
 # =========================================================
-fig_th, axes_th = plt.subplots(4, 1, figsize=(12, 16))
+fig_th, axes_th = plt.subplots(5, 1, figsize=(12, 20))
 fig_th.suptitle("Throughput over Time", fontsize=16)
 
-axes_th[3].set_title("Combined Comparison (All Tests)")
+axes_th[4].set_title("Combined Comparison (All Tests) - LOG SCALE")
 
 for idx, test in enumerate(tests):
     if not os.path.exists(test["log"]):
@@ -105,7 +106,7 @@ for idx, test in enumerate(tests):
         sorted_bins = sorted(time_bins.keys())
         throughputs = [time_bins[b] / bin_size for b in sorted_bins]
         
-        # Plot on individual subplot (Rows 1-3)
+        # Plot on individual subplot (Rows 1-4)
         axes_th[idx].plot(sorted_bins, throughputs, label=test["name"], color=test["color"], linewidth=2, marker='o', markersize=3)
         axes_th[idx].set_title(f"{test['name']} - (Bin size: {bin_size:.3f}s)")
         axes_th[idx].set_xlabel("Time (seconds)")
@@ -114,8 +115,8 @@ for idx, test in enumerate(tests):
         axes_th[idx].grid(True, linestyle='--', alpha=0.7)
         axes_th[idx].legend()
 
-        # Plot on combined subplot (Row 4)
-        axes_th[3].plot(sorted_bins, throughputs, label=test["name"], color=test["color"], linewidth=2, alpha=0.7, marker='o', markersize=3)
+        # Plot on combined subplot (Row 5)
+        axes_th[4].plot(sorted_bins, throughputs, label=test["name"], color=test["color"], linewidth=2, alpha=0.7, marker='o', markersize=3)
 
     # Print Metrics to Terminal
     print(f"\n--- {test['name']} Metrics ---")
@@ -123,12 +124,13 @@ for idx, test in enumerate(tests):
     print(f"Total retransmissions: {retransmissions}")
     print(f"Total timeouts: {timeouts}")
 
-# Finalize the combined subplot
-axes_th[3].set_xlabel("Time (seconds)")
-axes_th[3].set_ylabel("Throughput (B/s)")
-axes_th[3].set_xlim(left=0) 
-axes_th[3].grid(True, linestyle='--', alpha=0.7)
-axes_th[3].legend()
+# Finalize the combined subplot (Row 5)
+axes_th[4].set_xlabel("Time (seconds)")
+axes_th[4].set_ylabel("Throughput (B/s) - Log Scale")
+axes_th[4].set_xlim(left=0) 
+axes_th[4].set_yscale('log') # <--- THE GOLDEN FIX FOR THE SCALING ISSUE
+axes_th[4].grid(True, which="both", linestyle='--', alpha=0.7)
+axes_th[4].legend()
 
 plt.tight_layout(rect=[0, 0, 1, 0.97])
 plt.savefig(f"{plot_dir}/throughput_comparison.png")
