@@ -94,6 +94,38 @@ test: all directories
 	@echo "========================================"
 	@python3 plot_results.py
 
+test_bonus: all directories
+	@echo "========================================"
+	@echo "Running Bonus Phase Evaluation (Fast Retransmit & Recovery)"
+	@echo "========================================"
+	@echo "Cleaning up zombie processes..."
+	@-killall -9 receiver sender tmux 2>/dev/null || true
+	@mkdir -p Junk/Plots
+	@# Generate test data (3000 lines for a good timeframe)
+	@rm -f $(INPUT_FILE)
+	@for i in `seq 1 3000`; do echo "Line $$i: Bonus test data for plotting phase." >> $(INPUT_FILE); done
+
+	@echo "\n>>> RUNNING STANDARD MODE (Loss = 15%, Delay = 50ms) <<<"
+	./$(RECEIVER) $(PORT) $(OUTPUT_FILE) --loss 0.15 --delay 50 > /dev/null 2>&1 & PID=$$!; \
+	sleep 0.5; \
+	./$(SENDER) $(IP) $(PORT) $(INPUT_FILE) > /dev/null; \
+	wait $$PID; \
+	mv $(LOG_DIR)/cwnd.csv $(LOG_DIR)/cwnd_standard.csv; \
+	mv $(LOG_DIR)/events.log $(LOG_DIR)/events_standard.log
+
+	@echo "\n>>> RUNNING FAST MODE (Loss = 15%, Delay = 50ms) <<<"
+	./$(RECEIVER) $(PORT) $(OUTPUT_FILE) --loss 0.15 --delay 50 > /dev/null 2>&1 & PID=$$!; \
+	sleep 0.5; \
+	./$(SENDER) $(IP) $(PORT) $(INPUT_FILE) --fast > /dev/null; \
+	wait $$PID; \
+	mv $(LOG_DIR)/cwnd.csv $(LOG_DIR)/cwnd_bonus.csv; \
+	mv $(LOG_DIR)/events.log $(LOG_DIR)/events_bonus.log
+
+	@echo "\n========================================"
+	@echo "Tests Completed. Generating Bonus Comparison Plots..."
+	@echo "========================================"
+	@python3 plot_bonus.py
+
 clean:
 	rm -rf $(JUNK_DIR)
 	-tmux kill-session -t minitcp 2>/dev/null || true
