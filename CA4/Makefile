@@ -81,6 +81,14 @@ test: all directories
 	mv $(LOG_DIR)/cwnd.csv $(LOG_DIR)/cwnd_test3.csv; \
 	mv $(LOG_DIR)/events.log $(LOG_DIR)/events_test3.log
 
+	@echo "\n>>> RUNNING TEST 4 (BONUS): Loss = 10%, Delay = 50ms with FAST RECOVERY <<<"
+	./$(RECEIVER) $(PORT) $(OUTPUT_FILE) --loss 0.1 --delay 50 > /dev/null 2>&1 & PID=$$!; \
+	sleep 0.5; \
+	./$(SENDER) $(IP) $(PORT) $(INPUT_FILE) --fast > /dev/null; \
+	wait $$PID; \
+	mv $(LOG_DIR)/cwnd.csv $(LOG_DIR)/cwnd_test4.csv; \
+	mv $(LOG_DIR)/events.log $(LOG_DIR)/events_test4.log
+
 	@echo "\n========================================"
 	@echo "Tests Completed. Generating Python Plots..."
 	@echo "========================================"

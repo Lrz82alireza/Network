@@ -13,7 +13,7 @@
 
 const int TIMEOUT_SEC = 1;
 const int TIMEOUT_USEC = 0;
-const uint32_t RECEIVER_WINDOW = 50; // Fixed max receiver window
+const uint32_t RECEIVER_WINDOW = 50;
 
 int create_udp_socket() {
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -57,8 +57,7 @@ std::vector<Packet> prepare_packets(const std::string& filename, size_t& out_tot
     return packets;
 }
 
-void send_file(const std::string& ip, int port, const std::string& filename) {
-    // Initialize Loggers
+void send_file(const std::string& ip, int port, const std::string& filename, bool fast_mode) {
     Logger logger("Junk/Logs/events.log");
     std::ofstream cwnd_file("Junk/Logs/cwnd.csv", std::ios::trunc);
     if (cwnd_file.is_open()) {
@@ -87,7 +86,13 @@ void send_file(const std::string& ip, int port, const std::string& filename) {
     double cwnd = 1.0;
     int ssthresh = 16;
     
-    logger.log("Starting transmission. Total packets: " + std::to_string(total_packets));
+    // Fast Retransmit/Recovery Trackers
+    int dup_ack_count = 0;
+    bool in_fast_recovery = false;
+
+    logger.log("Starting transmission. Total packets: " + std::to_string(total_packets) + 
+               (fast_mode ? " [FAST MODE ENABLED]" : " [STANDARD MODE]"));
+               
     auto start_time = std::chrono::high_resolution_clock::now();
 
     auto record_cwnd = [&](double current_cwnd) {
@@ -102,7 +107,6 @@ void send_file(const std::string& ip, int port, const std::string& filename) {
     record_cwnd(cwnd);
 
     while (base < total_packets) {
-        // effective_window = min(receiver_window, cwnd)
         uint32_t effective_window = std::min(RECEIVER_WINDOW, static_cast<uint32_t>(cwnd));
 
         while (next_seq < base + effective_window && next_seq < total_packets) {
@@ -137,29 +141,68 @@ void send_file(const std::string& ip, int port, const std::string& filename) {
                 uint16_t calculated_checksum = calculate_checksum(&ack_pkt);
 
                 if (calculated_checksum == received_checksum && (ack_pkt.header.flags & FLAG_ACK)) {
-                    logger.log("Received ACK for expected seq: " + std::to_string(ack_pkt.header.ack_num));
+                    uint32_t acked_seq = ack_pkt.header.ack_num;
                     
-                    if (ack_pkt.header.ack_num > base) {
-                        base = ack_pkt.header.ack_num;
+                    if (acked_seq > base) {
+                        logger.log("Received ACK for expected seq: " + std::to_string(acked_seq));
+                        base = acked_seq;
+                        dup_ack_count = 0; // Reset on new ACK
                         
-                        // --- CONGESTION CONTROL UPDATE ---
-                        if (cwnd < ssthresh) {
-                            // Slow Start: Exponential growth
-                            cwnd += 1.0;
-                            logger.log("Slow Start -> cwnd increased to " + std::to_string(cwnd));
+                        if (in_fast_recovery) {
+                            // Deflate window upon exiting Fast Recovery
+                            cwnd = ssthresh;
+                            in_fast_recovery = false;
+                            logger.log("Exited Fast Recovery -> cwnd deflated to " + std::to_string(cwnd));
                         } else {
-                            // Congestion Avoidance: Linear growth (approx 1 packet per RTT)
-                            cwnd += (1.0 / static_cast<int>(cwnd));
-                            logger.log("Congestion Avoidance -> cwnd increased to " + std::to_string(cwnd));
+                            // Normal Congestion Control Update
+                            if (cwnd < ssthresh) {
+                                cwnd += 1.0;
+                                logger.log("Slow Start -> cwnd increased to " + std::to_string(cwnd));
+                            } else {
+                                cwnd += (1.0 / static_cast<int>(cwnd));
+                                logger.log("Congestion Avoidance -> cwnd increased to " + std::to_string(cwnd));
+                            }
                         }
                         record_cwnd(cwnd);
+                        
+                    } else if (acked_seq == base) {
+                        // Duplicate ACK received
+                        logger.log("Received Duplicate ACK for seq: " + std::to_string(acked_seq));
+                        dup_ack_count++;
+                        
+                        if (fast_mode) {
+                            if (dup_ack_count == 3) {
+                                logger.log("3 Dup ACKs! Triggering Fast Retransmit for seq: " + std::to_string(base));
+                                // Fast Retransmit
+                                std::vector<char> buffer = serialize(packets[base]);
+                                sendto(sockfd, buffer.data(), buffer.size(), 0,
+                                       (const struct sockaddr*)&receiver_addr, sizeof(receiver_addr));
+                                total_retransmissions++;
+                                
+                                // Fast Recovery Entry
+                                ssthresh = std::max(static_cast<int>(cwnd / 2.0), 2);
+                                cwnd = ssthresh + 3.0; 
+                                in_fast_recovery = true;
+                                logger.log("Entered Fast Recovery -> ssthresh: " + std::to_string(ssthresh) + ", cwnd: " + std::to_string(cwnd));
+                                record_cwnd(cwnd);
+                                
+                            } else if (dup_ack_count > 3 && in_fast_recovery) {
+                                // Window Inflation during Fast Recovery
+                                cwnd += 1.0;
+                                logger.log("Fast Recovery -> Window Inflated to " + std::to_string(cwnd));
+                                record_cwnd(cwnd);
+                            }
+                        }
                     }
                 }
             }
         } else if (ret == 0) {
             logger.log("Timeout occurred! Retransmitting window from seq: " + std::to_string(base));
             
-            // --- CONGESTION CONTROL: TIMEOUT ---
+            // Reset state on Timeout
+            dup_ack_count = 0;
+            in_fast_recovery = false;
+            
             ssthresh = std::max(static_cast<int>(cwnd / 2.0), 1);
             cwnd = 1.0;
             logger.log("TIMEOUT! -> ssthresh set to " + std::to_string(ssthresh) + ", cwnd dropped to 1.0");
@@ -172,7 +215,7 @@ void send_file(const std::string& ip, int port, const std::string& filename) {
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
-    double throughput = (total_payload_bytes) / elapsed.count(); // Bytes per second
+    double throughput = (total_payload_bytes) / elapsed.count();
 
     Packet fin_pkt;
     std::memset(&fin_pkt, 0, sizeof(Packet));
@@ -195,13 +238,21 @@ void send_file(const std::string& ip, int port, const std::string& filename) {
 
 int main(int argc, char* argv[]) {
     if (argc < 4) {
-        std::cerr << "Usage: " << argv[0] << " <Receiver IP> <Receiver Port> <Input File>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <Receiver IP> <Receiver Port> <Input File> [--fast]" << std::endl;
         return 1;
     }
     std::string ip = argv[1];
     int port = std::stoi(argv[2]);
     std::string input_file = argv[3];
     
-    send_file(ip, port, input_file);
+    // Check for bonus phase flag
+    bool fast_mode = false;
+    for (int i = 4; i < argc; ++i) {
+        if (std::string(argv[i]) == "--fast") {
+            fast_mode = true;
+        }
+    }
+    
+    send_file(ip, port, input_file, fast_mode);
     return 0;
 }
